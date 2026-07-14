@@ -1,5 +1,7 @@
 # Capital — Premium Finance Tracker
 
+[![CI](https://github.com/naren699/capital/actions/workflows/ci.yml/badge.svg)](https://github.com/naren699/capital/actions/workflows/ci.yml)
+
 *Financial clarity, refined.*
 
 A luxury-grade personal finance tracker built with React. Track income and expenses, set category budgets, save toward goals, and understand your money through rich analytics — all synced to Firebase for seamless multi-device access.
