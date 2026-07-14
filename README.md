@@ -2,9 +2,9 @@
 
 *Financial clarity, refined.*
 
-A luxury-grade personal finance tracker built with React. Track income and expenses, set category budgets, save toward goals, and understand your money through rich analytics — all stored locally in your browser.
+A luxury-grade personal finance tracker built with React. Track income and expenses, set category budgets, save toward goals, and understand your money through rich analytics — all synced to Firebase for seamless multi-device access.
 
-Designed with the **UI/UX Pro Max** skill: navy + gold palette, Space Grotesk / Inter / IBM Plex Mono typography, 8px spacing rhythm, WCAG-conscious contrast, and smooth 200–300ms micro-interactions in both light and dark mode.
+Designed with a premium aesthetic: navy + gold palette, Space Grotesk / Inter / IBM Plex Mono typography, 8px spacing rhythm, WCAG-conscious contrast, and smooth 200–300ms micro-interactions in both light and dark mode.
 
 ## Features
 
@@ -15,14 +15,16 @@ Designed with the **UI/UX Pro Max** skill: navy + gold palette, Space Grotesk / 
 - **Goals** — savings milestones with progress tracking, contributions, and achievement states
 - **Dark / light mode** — persisted, flash-free, designed as a pair (not inverted)
 - **Demo portfolio** — one click seeds 8 months of realistic data to explore
-- **localStorage persistence** — everything survives refresh; no backend, no account
+- **Cloud sync** — all data synced to Firebase; access from any device after login
 
 ## Tech Stack
 
-- [React 18](https://react.dev) + [Vite 6](https://vitejs.dev)
-- [Recharts](https://recharts.org) for data visualization
-- [Lucide](https://lucide.dev) icons (SVG, no emoji)
-- Hand-crafted CSS design system with semantic tokens (no framework bloat)
+- **Frontend:** React 18 + Vite 6
+- **Styling:** Tailwind CSS + custom CSS design system
+- **Charts:** Recharts for data visualization
+- **Icons:** Lucide (SVG)
+- **Backend:** Firebase (Authentication + Firestore)
+- **Real-time Sync:** Firestore listeners for multi-device updates
 
 ## Run Locally
 
@@ -37,33 +39,73 @@ npm run build    # production build in dist/
 ```
 src/
 ├── components/
-│   ├── Dashboard.jsx        # hero card, insights, overview charts
-│   ├── Transactions.jsx     # list, filters, CSV export, delete/undo
-│   ├── TransactionForm.jsx  # add/edit modal with validation
-│   ├── Analytics.jsx        # five-chart analytics suite
-│   ├── Budgets.jsx          # per-category budget manager
-│   ├── Goals.jsx            # savings goals with contributions
-│   ├── Layout.jsx           # header, desktop nav, mobile bottom nav
-│   └── ui.jsx               # Modal (portal), Toast, ProgressBar, EmptyState
+│   ├── Dashboard.jsx        # Hero card, monthly overview, insights
+│   ├── Activity.jsx         # Transaction list with filters & export
+│   ├── Analytics.jsx        # 5-chart analytics dashboard
+│   ├── Budgets.jsx          # Category budget manager
+│   ├── Goals.jsx            # Savings goals tracker
+│   ├── Login.jsx            # Email & Google sign-in
+│   ├── Register.jsx         # Account registration
+│   └── Layout.jsx           # Main navigation & header
 ├── context/
-│   ├── FinanceContext.jsx   # state, localStorage, derived metrics
-│   └── ThemeContext.jsx     # dark/light mode
-├── utils/                   # categories, formatters, demo data
-└── styles.css               # design-system tokens + components
-
-design-system/capital/       # persisted UI/UX Pro Max design system
+│   ├── AuthContext.jsx      # Firebase authentication state
+│   ├── FinanceContext.jsx   # Firestore sync & data operations
+│   └── ToastContext.jsx     # Toast notifications
+├── config/
+│   └── firebase.js          # Firebase initialization
+├── utils/
+│   ├── format.js            # Currency, date, time formatters
+│   ├── categories.js        # Transaction categories
+│   └── demo.js              # Demo data generator
+└── styles.css               # Design system & components
 ```
 
-## Design Decisions
+## Setup
 
-- **Navy (#2D3E50) + gold (#D4AF37)** — trust and sophistication with a touch of exclusivity; muted burgundy/sage for semantic states instead of harsh red/green
-- **Tabular monospace numerals** for every amount, so figures never shift layout
-- **Warm off-whites and off-blacks** (#FAFAF8 / #0F0F0D) instead of pure white/black
-- **Undo over friction** — deletes confirm once, then offer a 4-second undo toast
+### Prerequisites
+- Node.js 16+
+- A Firebase project (create one at [firebase.google.com](https://firebase.google.com))
 
-## Future Improvements
+### Firebase Setup
+1. Create a new Firebase project
+2. Enable Authentication (Email/Password + Google Sign-in)
+3. Create a Firestore database (Start in production mode)
+4. Replace the config in `src/config/firebase.js` with your credentials:
+   ```javascript
+   const firebaseConfig = {
+     apiKey: "YOUR_API_KEY",
+     authDomain: "YOUR_AUTH_DOMAIN",
+     projectId: "YOUR_PROJECT_ID",
+     storageBucket: "YOUR_STORAGE_BUCKET",
+     messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+     appId: "YOUR_APP_ID",
+   }
+   ```
+5. Publish Firestore security rules:
+   ```firestore
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /userFinance/{userId} {
+         allow read, write: if request.auth.uid == userId;
+       }
+     }
+   }
+   ```
 
-- Recurring transactions with calendar view
-- Receipt photo attachments
-- Multi-currency support
-- PWA offline install
+## Design System
+
+- **Navy (#2D3E50) + Gold (#D4AF37)** for premium aesthetic
+- **Tailwind CSS** for utility-first styling
+- **CSS Variables** for theming (light/dark mode)
+- **Tabular monospace numerals** for financial figures
+- **Smooth transitions** (200–300ms) for micro-interactions
+
+## Roadmap
+
+- [ ] Recurring transactions
+- [ ] Receipt attachments
+- [ ] Multi-currency support
+- [ ] Transaction tags
+- [ ] Savings calculator
+- [ ] Mobile app (React Native)
