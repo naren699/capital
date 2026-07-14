@@ -9,6 +9,26 @@ const FinanceContext = createContext(null)
 
 const emptyState = { transactions: [], budgets: {}, goals: [] }
 
+function validateTransaction(tx) {
+  const amount = Number(tx.amount)
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 10_000_000) {
+    return 'Amount must be a positive number.'
+  }
+  if (tx.type !== 'income' && tx.type !== 'expense') {
+    return 'Transaction type must be income or expense.'
+  }
+  if (!tx.category) {
+    return 'Category is required.'
+  }
+  if (!tx.date || Number.isNaN(Date.parse(tx.date))) {
+    return 'A valid date is required.'
+  }
+  if (tx.date > todayISO()) {
+    return 'Date cannot be in the future.'
+  }
+  return null
+}
+
 export function FinanceProvider({ children }) {
   const { user } = useAuth()
   const [data, setData] = useState(emptyState)
@@ -73,7 +93,12 @@ export function FinanceProvider({ children }) {
 
   // ---- Transactions ----
   const addTransaction = useCallback((tx) => {
-    const record = { ...tx, id: `tx-${Date.now()}-${Math.round(Math.random() * 1e5)}` }
+    const error = validateTransaction(tx)
+    if (error) {
+      pushToast(error, { kind: 'error' })
+      return null
+    }
+    const record = { ...tx, amount: Number(tx.amount), id: `tx-${Date.now()}-${Math.round(Math.random() * 1e5)}` }
     updateData((d) => ({
       ...d,
       transactions: [record, ...d.transactions].sort((a, b) => b.date.localeCompare(a.date)),
@@ -83,10 +108,15 @@ export function FinanceProvider({ children }) {
   }, [updateData, pushToast])
 
   const updateTransaction = useCallback((id, patch) => {
+    const error = validateTransaction(patch)
+    if (error) {
+      pushToast(error, { kind: 'error' })
+      return
+    }
     updateData((d) => ({
       ...d,
       transactions: d.transactions
-        .map((t) => (t.id === id ? { ...t, ...patch } : t))
+        .map((t) => (t.id === id ? { ...t, ...patch, amount: Number(patch.amount) } : t))
         .sort((a, b) => b.date.localeCompare(a.date)),
     }))
     pushToast('Transaction updated')

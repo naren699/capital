@@ -27,8 +27,10 @@ export default function TransactionForm({ initial, onClose }) {
     const e = {}
     const amt = parseFloat(amount)
     if (!amount || isNaN(amt) || amt <= 0) e.amount = 'Enter an amount greater than zero.'
+    else if (amt > 10_000_000) e.amount = 'Amount is too large.'
     if (!category) e.category = 'Choose a category.'
     if (!date) e.date = 'Pick a date.'
+    else if (date > todayISO()) e.date = 'Date cannot be in the future.'
     setErrors(e)
     return Object.keys(e).length === 0
   }
