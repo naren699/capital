@@ -1,62 +1,34 @@
 import { useMemo, useState } from 'react'
 import {
   Plus, ArrowUpRight, ArrowDownRight, Sparkles, TrendingUp, TrendingDown,
-  Landmark, PieChart as PieIcon, ListPlus, Trash2,
+  Landmark, PieChart as PieIcon, ListPlus, Trash2, AlertTriangle,
 } from 'lucide-react'
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell,
 } from 'recharts'
 import { useFinance } from '../context/FinanceContext'
 import { fmtMoney, fmtMoneyCompact, fmtMonth } from '../utils/format'
-import { EXPENSE_CATEGORIES, categoryById } from '../utils/constants'
+import { EXPENSE_CATEGORIES } from '../utils/constants'
 import { ChartTooltip, EmptyState, Modal } from './ui'
 import { TransactionRow } from './Transactions'
 import TransactionForm from './TransactionForm'
+import HealthScore from './HealthScore'
 
-function useInsights() {
-  const { thisMonth, prevMonth, savingsRate, projectedExpense, monthCategorySpend, budgets } = useFinance()
-  return useMemo(() => {
-    const list = []
-    if (prevMonth.expense > 0 && thisMonth.expense > 0) {
-      const diff = Math.round(((thisMonth.expense - prevMonth.expense) / prevMonth.expense) * 100)
-      if (Math.abs(diff) >= 5) {
-        list.push(diff < 0
-          ? `Spending is down ${Math.abs(diff)}% versus last month. Keep the momentum.`
-          : `Spending is running ${diff}% above last month's pace.`)
-      }
-    }
-    if (savingsRate != null && savingsRate > 0) {
-      list.push(`You're saving ${savingsRate}% of this month's income.`)
-    }
-    if (projectedExpense > 0) {
-      list.push(`At the current pace, this month closes at roughly ${fmtMoney(projectedExpense)} in spending.`)
-    }
-    let topCat = null
-    for (const [id, amt] of monthCategorySpend) {
-      if (!topCat || amt > topCat.amt) topCat = { id, amt }
-    }
-    if (topCat) {
-      list.push(`${categoryById(topCat.id).label} is your largest category this month at ${fmtMoney(topCat.amt)}.`)
-    }
-    for (const [catId, budget] of Object.entries(budgets)) {
-      const spent = monthCategorySpend.get(catId) || 0
-      if (budget > 0 && spent / budget >= 0.8 && spent / budget < 1) {
-        list.push(`${categoryById(catId).label} budget is at ${Math.round((spent / budget) * 100)}% — worth a glance.`)
-        break
-      }
-    }
-    return list.slice(0, 4)
-  }, [thisMonth, prevMonth, savingsRate, projectedExpense, monthCategorySpend, budgets])
+const INSIGHT_TONE = {
+  alert: { className: 'insight-alert', icon: AlertTriangle },
+  warn: { className: 'insight-warn', icon: AlertTriangle },
+  good: { className: 'insight-good', icon: TrendingUp },
+  info: { className: '', icon: Sparkles },
 }
 
 export default function Dashboard({ setView }) {
   const {
     transactions, balance, thisMonth, prevMonth, trend, monthCategorySpend,
-    savingsRate, loadDemo, clearAll,
+    savingsRate, loadDemo, clearAll, smartInsights,
   } = useFinance()
   const [adding, setAdding] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
-  const insights = useInsights()
+  const insights = smartInsights
 
   const donutData = useMemo(() =>
     EXPENSE_CATEGORIES
@@ -134,6 +106,8 @@ export default function Dashboard({ setView }) {
         </div>
       </section>
 
+      <HealthScore />
+
       <div className="grid grid-2">
         {/* Trend */}
         <div className="card card-hover">
@@ -197,16 +171,20 @@ export default function Dashboard({ setView }) {
       <div className="grid grid-2">
         {/* Insights */}
         <div className="card card-hover">
-          <h2 className="card-title"><Sparkles size={17} /> Insights</h2>
+          <h2 className="card-title"><Sparkles size={17} /> Smart Insights</h2>
           {insights.length === 0 ? (
             <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>Add more activity and insights will surface here.</p>
           ) : (
-            insights.map((text, i) => (
-              <div className="insight-row" key={i}>
-                <Sparkles size={15} />
-                <span>{text}</span>
-              </div>
-            ))
+            insights.map((it, i) => {
+              const tone = INSIGHT_TONE[it.kind] || INSIGHT_TONE.info
+              const Icon = tone.icon
+              return (
+                <div className={`insight-row ${tone.className}`} key={i}>
+                  <Icon size={15} />
+                  <span>{it.text}</span>
+                </div>
+              )
+            })
           )}
         </div>
 

@@ -1,4 +1,4 @@
-import { LayoutDashboard, ArrowLeftRight, ChartPie, Wallet, Target, Moon, Sun, Landmark, LogOut } from 'lucide-react'
+import { LayoutDashboard, ArrowLeftRight, ChartPie, Wallet, Target, Repeat, Moon, Sun, Landmark, LogOut, Command } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 
@@ -8,9 +8,13 @@ export const NAV_ITEMS = [
   { id: 'analytics', label: 'Analytics', icon: ChartPie },
   { id: 'budgets', label: 'Budgets', icon: Wallet },
   { id: 'goals', label: 'Goals', icon: Target },
+  { id: 'recurring', label: 'Recurring', icon: Repeat },
 ]
 
-export function Header({ view, setView }) {
+// Mobile bottom bar keeps the core five to stay uncluttered.
+const MOBILE_NAV = NAV_ITEMS.filter((n) => n.id !== 'recurring')
+
+export function Header({ view, setView, onOpenPalette }) {
   const { theme, toggle } = useTheme()
   const { user, logout } = useAuth()
 
@@ -44,6 +48,11 @@ export function Header({ view, setView }) {
         </nav>
         <div className="header-actions">
           {user && <span className="user-email">{user.email}</span>}
+          {onOpenPalette && (
+            <button className="cmdk-trigger" onClick={onOpenPalette} aria-label="Open command palette">
+              <Command size={14} /> <span>K</span>
+            </button>
+          )}
           <button className="btn-icon" onClick={toggle} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
             {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
           </button>
@@ -71,7 +80,7 @@ export function BottomNav({ view, setView, user }) {
 
   return (
     <nav className="bottom-nav" aria-label="Primary">
-      {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
+      {MOBILE_NAV.map(({ id, label, icon: Icon }) => (
         <button
           key={id}
           className={`bottom-nav-item ${view === id ? 'active' : ''}`}

@@ -4,10 +4,57 @@ import { db } from '../config/firebase'
 import { useAuth } from './AuthContext'
 import { currentMonthKey, monthKey, todayISO } from '../utils/format'
 import { generateDemoData } from '../utils/demo'
+import { computeHealthScore, computeInsights } from '../utils/insights'
 
 const FinanceContext = createContext(null)
 
-const emptyState = { transactions: [], budgets: {}, goals: [] }
+const emptyState = { transactions: [], budgets: {}, goals: [], recurring: [] }
+
+// ---- Recurring helpers ----
+function advanceDate(iso, frequency) {
+  const d = new Date(iso + 'T00:00:00')
+  if (frequency === 'weekly') {
+    d.setDate(d.getDate() + 7)
+  } else if (frequency === 'biweekly') {
+    d.setDate(d.getDate() + 14)
+  } else if (frequency === 'yearly') {
+    d.setFullYear(d.getFullYear() + 1)
+  } else {
+    // monthly (default): keep the same day-of-month where possible
+    const day = d.getDate()
+    d.setMonth(d.getMonth() + 1)
+    if (d.getDate() < day) d.setDate(0) // clamp to last day of shorter months
+  }
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// Walks each rule forward from nextDate, emitting a transaction for every
+// occurrence that is now due (<= today). Returns updated rules + new txns.
+function runRecurring(recurring, today) {
+  const generated = []
+  let changed = false
+  const nextRules = (recurring || []).map((rule) => {
+    if (!rule.active || !rule.nextDate) return rule
+    let cursor = rule.nextDate
+    let guard = 0
+    while (cursor <= today && guard < 400) {
+      generated.push({
+        id: `tx-${Date.now()}-${Math.round(Math.random() * 1e6)}-${guard}`,
+        type: rule.type,
+        amount: Number(rule.amount),
+        category: rule.category,
+        date: cursor,
+        notes: rule.notes || '',
+        recurringId: rule.id,
+      })
+      cursor = advanceDate(cursor, rule.frequency)
+      guard += 1
+      changed = true
+    }
+    return cursor === rule.nextDate ? rule : { ...rule, nextDate: cursor }
+  })
+  return { changed, generated, nextRules }
+}
 
 function validateTransaction(tx) {
   const amount = Number(tx.amount)
@@ -62,6 +109,7 @@ export function FinanceProvider({ children }) {
             transactions: Array.isArray(d.transactions) ? d.transactions : [],
             budgets: d.budgets && typeof d.budgets === 'object' ? d.budgets : {},
             goals: Array.isArray(d.goals) ? d.goals : [],
+            recurring: Array.isArray(d.recurring) ? d.recurring : [],
           })
         }
         syncedRef.current = true
@@ -170,6 +218,49 @@ export function FinanceProvider({ children }) {
     pushToast('Goal deleted', { kind: 'warning' })
   }, [updateData, pushToast])
 
+  // ---- Recurring transactions ----
+  const addRecurring = useCallback((rule) => {
+    const record = {
+      ...rule,
+      amount: Number(rule.amount),
+      id: `rec-${Date.now()}-${Math.round(Math.random() * 1e5)}`,
+      active: true,
+      nextDate: rule.startDate || todayISO(),
+    }
+    updateData((d) => ({ ...d, recurring: [...(d.recurring || []), record] }))
+    pushToast('Recurring rule added')
+    return record
+  }, [updateData, pushToast])
+
+  const updateRecurring = useCallback((id, patch) => {
+    updateData((d) => ({
+      ...d,
+      recurring: (d.recurring || []).map((r) => (r.id === id ? { ...r, ...patch } : r)),
+    }))
+  }, [updateData])
+
+  const deleteRecurring = useCallback((id) => {
+    updateData((d) => ({ ...d, recurring: (d.recurring || []).filter((r) => r.id !== id) }))
+    pushToast('Recurring rule removed', { kind: 'warning' })
+  }, [updateData, pushToast])
+
+  // Auto-generate due occurrences whenever data syncs. The guard ref ensures we
+  // only process once per snapshot, and updateData's re-render finds nothing due.
+  const processingRef = useRef(false)
+  useEffect(() => {
+    if (!syncedRef.current || processingRef.current) return
+    const { changed, generated, nextRules } = runRecurring(data.recurring, todayISO())
+    if (!changed) return
+    processingRef.current = true
+    updateData((d) => ({
+      ...d,
+      recurring: nextRules,
+      transactions: [...generated, ...d.transactions].sort((a, b) => b.date.localeCompare(a.date)),
+    }))
+    pushToast(`${generated.length} recurring transaction${generated.length > 1 ? 's' : ''} posted`)
+    setTimeout(() => { processingRef.current = false }, 0)
+  }, [data.recurring, updateData, pushToast])
+
   // ---- Demo & clear ----
   const loadDemo = useCallback(() => {
     updateData(generateDemoData())
@@ -182,7 +273,7 @@ export function FinanceProvider({ children }) {
   }, [updateData, pushToast])
 
   // ---- Derived metrics ----
-  const { transactions, budgets, goals } = data
+  const { transactions, budgets, goals, recurring } = data
 
   const balance = useMemo(
     () => transactions.reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0),
@@ -244,10 +335,21 @@ export function FinanceProvider({ children }) {
     return Math.round(((thisMonth.income - thisMonth.expense) / thisMonth.income) * 100)
   }, [thisMonth])
 
+  const healthScore = useMemo(
+    () => computeHealthScore({ transactions, budgets, savingsRate, thisMonth, prevMonth, monthCategorySpend }),
+    [transactions, budgets, savingsRate, thisMonth, prevMonth, monthCategorySpend],
+  )
+
+  const smartInsights = useMemo(
+    () => computeInsights({ transactions, budgets, thisMonth, prevMonth, savingsRate, projectedExpense, monthCategorySpend }),
+    [transactions, budgets, thisMonth, prevMonth, savingsRate, projectedExpense, monthCategorySpend],
+  )
+
   const value = {
     transactions,
     budgets,
     goals,
+    recurring,
     toasts,
     addTransaction,
     updateTransaction,
@@ -256,6 +358,9 @@ export function FinanceProvider({ children }) {
     addGoal,
     updateGoal,
     deleteGoal,
+    addRecurring,
+    updateRecurring,
+    deleteRecurring,
     pushToast,
     dismissToast,
     loadDemo,
@@ -267,6 +372,8 @@ export function FinanceProvider({ children }) {
     trend,
     projectedExpense,
     savingsRate,
+    healthScore,
+    smartInsights,
   }
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>

@@ -8,7 +8,11 @@ Designed with a premium aesthetic: navy + gold palette, Space Grotesk / Inter / 
 
 ## Features
 
-- **Dashboard** — total balance hero card, monthly income/spending, savings rate, 12-month cash-flow chart, category donut, data-driven insights, recent activity
+- **Dashboard** — total balance hero card, monthly income/spending, savings rate, 12-month cash-flow chart, category donut, recent activity
+- **Financial Health Score** — a 0–100 score with an animated gauge, graded across savings rate, budget adherence, spending trend, and tracking habit, with a personalized tip
+- **Smart Insights & Alerts** — auto-detected budget overspend, category spikes, month-over-month swings, and pace projections
+- **Recurring transactions** — automate rent, salary, or subscriptions (weekly → yearly); missed occurrences backfill automatically
+- **Command Palette (⌘K / Ctrl+K)** — jump to any page, add a transaction, toggle theme, or load demo data from anywhere
 - **Activity** — full transaction CRUD with search, type/category filters, pagination, CSV export, delete confirmation with undo
 - **Analytics** — expense breakdown donut, income vs spending area chart, net cash-flow bars, average spend by weekday, 6-month category trends
 - **Budgets** — per-category monthly limits with elegant progress bars and approaching/over-budget states
@@ -103,9 +107,10 @@ src/
 
 ## Roadmap
 
-- [ ] Recurring transactions
+- [x] Recurring transactions
+- [x] Financial health score
+- [x] Command palette
 - [ ] Receipt attachments
 - [ ] Multi-currency support
 - [ ] Transaction tags
-- [ ] Savings calculator
 - [ ] Mobile app (React Native)
